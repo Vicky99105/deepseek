@@ -1,210 +1,163 @@
 import streamlit as st
 from langchain_ollama import OllamaLLM
 import PyPDF2
-import io
 import time
 
-# Set page config
-st.set_page_config(
-    page_title="Resume Analyzer",
-    page_icon="📄",
-    layout="wide"
-)
+# Simple page config
+st.set_page_config(page_title="Resume Analyzer", page_icon="📄", layout="wide")
 
-# Initialize Ollama with specific parameters
-@st.cache_resource
-def load_model(model_name="deepseek-coder"):
-    """Load the specified model. Defaults to deepseek-coder if not specified"""
-    return OllamaLLM(
-        model=model_name,
-        temperature=0.7,
-        timeout=60,
-        stop=["</s>", "Human:", "Assistant:"]
-    )
+# Just the essential styling for larger text
+st.markdown("""
+    <style>
+    h1 {font-size: 3rem}
+    h2 {font-size: 2rem}
+    .stButton>button {width: 100%}
+    </style>
+""", unsafe_allow_html=True)
 
-def extract_text_from_pdf(pdf_file):
-    """Extract text from uploaded PDF file"""
-    pdf_reader = PyPDF2.PdfReader(pdf_file)
-    text = ""
-    for page in pdf_reader.pages:
-        text += page.extract_text()
-    return text.strip()
-
-def analyze_resume(text, aspect, model_name="deepseek-coder"):
-    """Analyze resume with specified model and track response time"""
-    llm = load_model(model_name)
-    
-    prompts = {
-        "skills": "Analyze the following resume and list all technical and soft skills mentioned. Format the output in bullet points:\n\nResume:\n",
-        "experience": "Analyze the following resume and evaluate the work experience. Provide insights about career progression and key achievements:\n\nResume:\n",
-        "education": "Analyze the following resume and evaluate the educational background. Comment on the relevance and strength of the education:\n\nResume:\n",
-        "improvements": "Analyze the following resume and suggest specific improvements. Format suggestions in bullet points:\n\nResume:\n",
-        "ats": "Analyze if this resume is ATS (Applicant Tracking System) friendly and provide specific suggestions for improvement:\n\nResume:\n"
-    }
-    
-    try:
-        max_length = 2000
-        if len(text) > max_length:
-            text = text[:max_length] + "..."
-        
-        prompt = prompts[aspect] + text
-        
-        with st.spinner(f"Analyzing {aspect}..."):
-            start_time = time.time()  # Start timing
-            response = llm.invoke(prompt)
-            end_time = time.time()  # End timing
-            
-            if not response:
-                return "Analysis failed. Please try again.", 0
-            
-            response_time = round(end_time - start_time, 2)  # Calculate response time
-            return response.strip(), response_time
-            
-    except Exception as e:
-        st.error(f"Error during analysis: {str(e)}")
-        return f"Error during analysis: {str(e)}", 0
-
-def format_report(analysis_results):
-    """Format the analysis results in a nice looking report"""
-    st.markdown("## 📊 Detailed Analysis Report")
-    
-    # Skills Section
-    st.markdown("### 🎯 Skills")
-    st.markdown(analysis_results["skills"][0])  # [0] is the response text
-    st.caption(f"⚡ Response time: {analysis_results['skills'][1]} seconds")
-    st.divider()
-    
-    # Experience Section
-    st.markdown("### 💼 Work Experience")
-    st.markdown(analysis_results["experience"][0])
-    st.caption(f"⚡ Response time: {analysis_results['experience'][1]} seconds")
-    st.divider()
-    
-    # Education Section
-    st.markdown("### 🎓 Education")
-    st.markdown(analysis_results["education"][0])
-    st.caption(f"⚡ Response time: {analysis_results['education'][1]} seconds")
-    st.divider()
-    
-    # Improvements Section
-    st.markdown("### 📈 Suggested Improvements")
-    st.markdown(analysis_results["improvements"][0])
-    st.caption(f"⚡ Response time: {analysis_results['improvements'][1]} seconds")
-    st.divider()
-    
-    # ATS Compatibility Section
-    st.markdown("### 🤖 ATS Compatibility")
-    st.markdown(analysis_results["ats"][0])
-    st.caption(f"⚡ Response time: {analysis_results['ats'][1]} seconds")
-    
-    # Total time calculation
-    total_time = sum(result[1] for result in analysis_results.values())
-    st.markdown(f"### ⏱️ Total Analysis Time: {round(total_time, 2)} seconds")
-
-# Main UI
-st.title("📄 Resume Analyzer")
-st.write("Upload your resume and get detailed analysis on various aspects")
+# Main title
+st.markdown("# 📄 Resume Analyzer")
+st.write("Upload your resume and get AI-powered analysis")
 
 # Model selection
 model_options = {
-    "Deepseek Coder (Recommended)": "deepseek-coder",
-    "Deepseek R1 1.5B": "deepseek-r1:1.5b",
+    "Deepseek Coder (Fast)": "deepseek-coder",
+    "Deepseek R1 1.5B (Detailed)": "deepseek-r1:1.5b",
 }
-selected_model = st.selectbox(
-    "Select Model",
-    options=list(model_options.keys()),
-    index=0
-)
+selected_model = st.selectbox("Choose Model", options=list(model_options.keys()))
 
-uploaded_file = st.file_uploader("Upload your resume (PDF format)", type="pdf")
+# File upload
+uploaded_file = st.file_uploader("Upload Resume (PDF)", type="pdf")
 
-if uploaded_file is not None:
-    # Extract text from PDF
-    with st.spinner("Extracting text from PDF..."):
-        resume_text = extract_text_from_pdf(uploaded_file)
-    
-    # Create tabs for different analyses
-    tabs = st.tabs(["Skills", "Experience", "Education", "Improvements", "ATS Compatibility"])
-    
-    # Dictionary to store analysis results
-    analysis_results = {}
-    
-    with tabs[0]:
-        st.header("Skills Analysis")
-        if st.button("Analyze Skills"):
-            response, resp_time = analyze_resume(resume_text, "skills", model_options[selected_model])
-            analysis_results["skills"] = (response, resp_time)
-            st.write(response)
-            st.caption(f"⚡ Response time: {resp_time} seconds")
-    
-    with tabs[1]:
-        st.header("Experience Analysis")
-        if st.button("Analyze Experience"):
-            response, resp_time = analyze_resume(resume_text, "experience", model_options[selected_model])
-            analysis_results["experience"] = (response, resp_time)
-            st.write(response)
-            st.caption(f"⚡ Response time: {resp_time} seconds")
-    
-    with tabs[2]:
-        st.header("Education Analysis")
-        if st.button("Analyze Education"):
-            response, resp_time = analyze_resume(resume_text, "education", model_options[selected_model])
-            analysis_results["education"] = (response, resp_time)
-            st.write(response)
-            st.caption(f"⚡ Response time: {resp_time} seconds")
-    
-    with tabs[3]:
-        st.header("Suggested Improvements")
-        if st.button("Get Improvements"):
-            response, resp_time = analyze_resume(resume_text, "improvements", model_options[selected_model])
-            analysis_results["improvements"] = (response, resp_time)
-            st.write(response)
-            st.caption(f"⚡ Response time: {resp_time} seconds")
-    
-    with tabs[4]:
-        st.header("ATS Compatibility")
-        if st.button("Check ATS Compatibility"):
-            response, resp_time = analyze_resume(resume_text, "ats", model_options[selected_model])
-            analysis_results["ats"] = (response, resp_time)
-            st.write(response)
-            st.caption(f"⚡ Response time: {resp_time} seconds")
+# Analysis sections
+SECTIONS = {
+    "skills": {
+        "title": "Skills Analysis",
+        "icon": "🎯",
+        "prompt": """Analyze the following resume for skills. 
+First, think through the analysis (wrap your thinking in <think> tags). 
+Then, provide a clean, bullet-pointed list of:
+- Technical Skills
+- Soft Skills
 
-    # Generate Complete Report
+Resume:\n"""
+    },
+    "experience": {
+        "title": "Experience Analysis",
+        "icon": "💼",
+        "prompt": """Analyze the work experience in this resume.
+First, think through the analysis (wrap your thinking in <think> tags).
+Then, provide a clear summary of:
+- Key roles
+- Achievements
+- Career progression
+
+Resume:\n"""
+    },
+    "education": {
+        "title": "Education Analysis",
+        "icon": "🎓",
+        "prompt": """Analyze the educational background.
+First, think through the analysis (wrap your thinking in <think> tags).
+Then, summarize:
+- Degrees
+- Institutions
+- Academic achievements
+
+Resume:\n"""
+    },
+    "improvements": {
+        "title": "Suggested Improvements",
+        "icon": "📈",
+        "prompt": """Suggest improvements for this resume.
+First, think through the analysis (wrap your thinking in <think> tags).
+Then, list 3-5 specific improvements.
+
+Resume:\n"""
+    },
+    "ats": {
+        "title": "ATS Compatibility",
+        "icon": "🤖",
+        "prompt": """Check if this resume is ATS-friendly.
+First, think through the analysis (wrap your thinking in <think> tags).
+Then, list:
+- ATS compatibility score
+- Main issues
+- Quick fixes
+
+Resume:\n"""
+    }
+}
+
+def analyze_resume(text, aspect, model_name):
+    """Analyze resume and track response time"""
+    llm = OllamaLLM(
+        model=model_name,
+        temperature=0.7,
+        timeout=60,
+    )
+    
+    try:
+        # Truncate long text
+        text = text[:2000] + "..." if len(text) > 2000 else text
+        
+        with st.spinner(f"Analyzing {aspect}..."):
+            start_time = time.time()
+            response = llm.invoke(SECTIONS[aspect]["prompt"] + text)
+            resp_time = round(time.time() - start_time, 2)
+            
+            # Handle thinking process
+            if "<think>" in response:
+                thinking, result = response.split("</think>")
+                with st.expander("Show Analysis Process"):
+                    st.write(thinking.replace("<think>", "").strip())
+                return result.strip(), resp_time
+            
+            return response.strip(), resp_time
+            
+    except Exception as e:
+        st.error(f"Error: {str(e)}")
+        return f"Analysis failed: {str(e)}", 0
+
+if uploaded_file:
+    # Read PDF
+    pdf_reader = PyPDF2.PdfReader(uploaded_file)
+    resume_text = " ".join(page.extract_text() for page in pdf_reader.pages)
+    
+    # Create tabs
+    tabs = st.tabs([f"{s['icon']} {s['title']}" for s in SECTIONS.values()])
+    results = {}
+    
+    for tab, (key, section) in zip(tabs, SECTIONS.items()):
+        with tab:
+            st.markdown(f"## {section['icon']} {section['title']}")
+            if st.button(f"Analyze {section['title']}", key=key):
+                response, time_taken = analyze_resume(
+                    resume_text, 
+                    key, 
+                    model_options[selected_model]
+                )
+                results[key] = (response, time_taken)
+                st.write(response)
+                st.info(f"⚡ Time taken: {time_taken} seconds")
+    
+    # Complete report button
     if st.button("Generate Complete Report"):
-        with st.spinner("Generating complete report..."):
-            # Analyze any missing sections
-            for aspect in ["skills", "experience", "education", "improvements", "ats"]:
-                if aspect not in analysis_results:
-                    response, resp_time = analyze_resume(resume_text, aspect, model_options[selected_model])
-                    analysis_results[aspect] = (response, resp_time)
+        st.markdown("## 📊 Complete Analysis")
+        
+        for key, section in SECTIONS.items():
+            if key not in results:
+                response, time_taken = analyze_resume(
+                    resume_text, 
+                    key, 
+                    model_options[selected_model]
+                )
+                results[key] = (response, time_taken)
             
-            # Format and display the report
-            format_report(analysis_results)
-            
-            # Create downloadable report
-            report_text = f"""Resume Analysis Report
-
-🎯 Skills: (Response time: {analysis_results["skills"][1]} seconds)
-{analysis_results["skills"][0]}
-
-💼 Work Experience: (Response time: {analysis_results["experience"][1]} seconds)
-{analysis_results["experience"][0]}
-
-🎓 Education: (Response time: {analysis_results["education"][1]} seconds)
-{analysis_results["education"][0]}
-
-📈 Suggested Improvements: (Response time: {analysis_results["improvements"][1]} seconds)
-{analysis_results["improvements"][0]}
-
-🤖 ATS Compatibility: (Response time: {analysis_results["ats"][1]} seconds)
-{analysis_results["ats"][0]}
-
-⏱️ Total Analysis Time: {round(sum(result[1] for result in analysis_results.values()), 2)} seconds
-"""
-            
-            st.download_button(
-                label="Download Analysis Report",
-                data=report_text,
-                file_name="resume_analysis.txt",
-                mime="text/plain"
-            )
+            st.markdown(f"## {section['icon']} {section['title']}")
+            st.write(results[key][0])
+            st.info(f"⚡ Time taken: {results[key][1]} seconds")
+            st.divider()
+        
+        total_time = sum(time for _, time in results.values())
+        st.success(f"Total analysis time: {round(total_time, 2)} seconds")
