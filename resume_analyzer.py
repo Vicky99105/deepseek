@@ -87,16 +87,13 @@ def analyze_resume(text, aspect, model_name):
     """Analyze resume with optimized settings"""
     llm = OllamaLLM(
         model=model_name,
-        temperature=0.1,  # Reduced temperature for faster, more focused responses
+        temperature=0.2,  # Reduced temperature for faster, more focused responses
         timeout=45,  # Reduced timeout
-        num_ctx=1024,  # Reduced context window
-        repeat_penalty=1.1,  # Slight penalty for repetition
-        stop=["Resume:", "\n\n\n"]  # Added stop sequences
     )
     
     try:
         # Reduce text length more aggressively
-        text = text[:1000] + "..." if len(text) > 1000 else text
+        text = text[:1500] + "..." if len(text) > 1500 else text
         
         with st.spinner(f"Analyzing {aspect}..."):
             start_time = time.time()
