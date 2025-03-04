@@ -33,11 +33,11 @@ SECTION = {
     "Skills and Projects": {
         "title": "Skills and Projects Analysis",
         "icon": "🚀",
-        "prompt": """List technical, soft skills, and projects from the given resume in the following structured-concise format with bullet points.
-• Technical Skills: \n
-• Soft Skills: \n
+        "prompt": """List technical, soft skills, and projects from the given resume in the following structured and concise format with bullet points in new lines.
+• Technical Skills:
+• Soft Skills:
 • Projects: Problem statement, Technologies used, Key contributions \n
-Resume:\n"""
+Resume: \n """ 
     }
 }
 
